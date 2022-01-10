@@ -1,7 +1,7 @@
-#Email_API for AtlasPlanner
+#email_API for AtlasPlanner
 
-This is a microservice that autoautomatically sends an email 
-to both the recipient and participant of the reservation details.
+This is a microservice that automatically sends an email 
+to both recipient and participant of reservation details.
 Email gets automatically sent for the following actions:
 
 - Creating a user profile (for the host)
