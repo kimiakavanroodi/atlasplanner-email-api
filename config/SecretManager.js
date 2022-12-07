@@ -3,7 +3,7 @@ const client = new SecretManagerServiceClient();
 
 async function getSecret(secret) {
 
-    const name = `projects/133245124182/secrets/${secret}/versions/1`;
+    const name = `projects/133245124182/secrets/${secret}/versions/2`;
     
     const [version] = await client.accessSecretVersion({
       name: name,
