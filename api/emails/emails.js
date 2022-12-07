@@ -1,12 +1,9 @@
 const nodemailer = require("nodemailer");
 const config = require('../../config/Config');
-const { validateCaptcha } = require("../../config/Captcha");
-const { json } = require("body-parser");
-const request = require("request");
 const axios = require("axios")
 
 
-const sendBulkUploads = async(req, res) => {
+const sendBulkUploads = async (req, res) => {
     const authHeader = req.headers.authorization
     const subjectLine = req.body.subject
 
@@ -14,32 +11,35 @@ const sendBulkUploads = async(req, res) => {
     let eventId = req.params.eventId
 
     const sessions = req.body.sessions
-    
-    var emailHost = await config.getConfig('EMAIL')
-    var emailPass = await config.getConfig('EMAIL_PASS')
+
+    const EMAIL_VERSION = 2;
+
+    var emailHost = await config.getConfig('EMAIL', EMAIL_VERSION)
+    var emailPass = await config.getConfig('EMAIL_PASS', EMAIL_VERSION)
 
     let transporter = nodemailer.createTransport({
         service: "Gmail",
         auth: {
-            user: emailHost, 
-            pass: emailPass, 
+            user: emailHost,
+            pass: emailPass,
         },
-    });   
+    });
 
-    axios.default.get(`https://atlasplanner.ue.r.appspot.com/events/is-owner/${orgId}/${eventId}`, { 'headers': { 'authorization': authHeader }
+    axios.default.get(`https://atlasplanner.ue.r.appspot.com/events/is-owner/${orgId}/${eventId}`, {
+        'headers': { 'authorization': authHeader }
     }).then((resp) => {
         if (resp.data) {
             sessions.map((session) => {
                 if (session.email) {
                     var emailFormat = req.body.email
                     emailFormat += `<br></br> <p> Click <a title="edit" href=${`https://atlasplanner-e530e.web.app/profile/${session._orgId}/${session._eventId}/${session._id}`}>here</a> to go to your profile. </p>`
-                    
+
                     transporter.sendMail({
-                        from: `"Atlasplanner" <${emailHost}>`, 
-                        to: session.email, 
-                        subject: subjectLine, 
+                        from: `"Atlasplanner" <${emailHost}>`,
+                        to: session.email,
+                        subject: subjectLine,
                         text: "",
-                        html: emailFormat, 
+                        html: emailFormat,
                     }).then((resp) => {
                         console.log(resp)
                     })
@@ -51,14 +51,12 @@ const sendBulkUploads = async(req, res) => {
 
             res.status(404).send('Not the owner')
         }
-      }).catch((err) => {
+    }).catch((err) => {
         res.status(404).send('Not the owner')
     })
 }
 
-const sendSessConfirm = async(req, res) => {
-    const recaptcha_key = req.body.key
-
+const sendSessConfirm = async (req, res) => {
     const emailBody = {
         "name": req.body.name,
         "email": req.body.email,
@@ -68,27 +66,25 @@ const sendSessConfirm = async(req, res) => {
         "sessionURL": req.body.sessionURL
     };
 
-    var emailHost = await config.getConfig('EMAIL')
-    var emailPass = await config.getConfig('EMAIL_PASS')
-    var recaptcha_secret = await config.getConfig('RECAPTCHA_SECRET')
+    const EMAIL_VERSION = 2;
 
-    validateCaptcha(recaptcha_secret, recaptcha_key).then((result) => {
-        if (result.success) {
+    var emailHost = await config.getConfig('EMAIL', 2)
+    var emailPass = await config.getConfig('EMAIL_PASS', 2)
 
-            let transporter = nodemailer.createTransport({
-                service: "Gmail",
-                auth: {
-                    user: emailHost, 
-                    pass: emailPass, 
-                },
-            });
+    let transporter = nodemailer.createTransport({
+        service: "Gmail",
+        auth: {
+            user: emailHost,
+            pass: emailPass,
+        },
+    });
 
-            transporter.sendMail({
-                from: `"Atlasplanner" <${emailHost}>`, // sender address
-                to: emailBody["email"], // list of receivers
-                subject: "User profile created ✔", // Subject line
-                text: "", // plain text body
-                html: `<p style="text-align: left;"><span style="color: #333333;">Hi ${req.body.name},</span></p>
+    transporter.sendMail({
+        from: `"Atlasplanner" <${emailHost}>`, // sender address
+        to: emailBody["email"], // list of receivers
+        subject: "User profile created ✔", // Subject line
+        text: "", // plain text body
+        html: `<p style="text-align: left;"><span style="color: #333333;">Hi ${req.body.name},</span></p>
                 <p style="text-align: left;"><span style="color: #333333;">Your user profile has been created. View all bookings & make edits <a title="edit" href=${emailBody.editURL}>here</a>. You will be notified via email of all bookings or cancellations as well.</span></p>
                 <p style="text-align: left;"><span style="color: #333333;">Profile Summary</p>
                 <p style="text-align: left;"><span style="color: #000000;"><strong>Event Date/Time:</strong></span></p>
@@ -100,20 +96,13 @@ const sendSessConfirm = async(req, res) => {
                 <p style="text-align: left;">&nbsp;</p>
                 <hr />
                 <p style="text-align: left;">Sent from <a title="AtlasPlanner" href=${emailBody.editURL}>AtlasPlanner</a></p>`, // html body
-            });
+    });
 
-            res.status(200).send("Confirmation email has been sent!");
-        }
-        else {
-            res.send("Recaptcha verification failed. Are you a robot?")
-        }
-    }).catch(reason => {
-        console.log("Recaptcha request failure", reason)
-        res.send("Recaptcha request failed.")
-    })
+    res.status(200).send("Confirmation email has been sent!");
+
 }
 
-const reserveSession = async(req, res) => {
+const reserveSession = async (req, res) => {
     const sessionInfo = req.body.session
 
     const link = {
@@ -127,14 +116,16 @@ const reserveSession = async(req, res) => {
         "timestamp": req.body.timestamp
     };
 
-    var emailHost = await config.getConfig('EMAIL')
-    var emailPass = await config.getConfig('EMAIL_PASS')
+    const EMAIL_VERSION = 2;
+
+    var emailHost = await config.getConfig('EMAIL', EMAIL_VERSION)
+    var emailPass = await config.getConfig('EMAIL_PASS', EMAIL_VERSION)
 
     let transporter = nodemailer.createTransport({
         service: "Gmail",
         auth: {
-            user: emailHost, 
-            pass: emailPass, 
+            user: emailHost,
+            pass: emailPass,
         },
     });
 
@@ -193,7 +184,7 @@ const reserveSession = async(req, res) => {
 
 }
 
-const deleteReservation = async(req, res) => {
+const deleteReservation = async (req, res) => {
     let sending_name = req.body.name
     let sending_email = req.body.email
 
@@ -202,14 +193,16 @@ const deleteReservation = async(req, res) => {
 
     let timestamp = req.body.timestamp
 
-    var emailHost = await config.getConfig('EMAIL')
-    var emailPass = await config.getConfig('EMAIL_PASS')
+    const EMAIL_VERSION = 2;
+
+    var emailHost = await config.getConfig('EMAIL', EMAIL_VERSION)
+    var emailPass = await config.getConfig('EMAIL_PASS', EMAIL_VERSION)
 
     let transporter = nodemailer.createTransport({
         service: "Gmail",
         auth: {
-            user: emailHost, 
-            pass: emailPass, 
+            user: emailHost,
+            pass: emailPass,
         },
     });
 
@@ -251,7 +244,7 @@ const deleteReservation = async(req, res) => {
 
 };
 
-const hostCancels = async(req, res) => {
+const hostCancels = async (req, res) => {
     let guest_name = req.body.name
     let guest_email = req.body.email
 
@@ -265,14 +258,16 @@ const hostCancels = async(req, res) => {
         location = "Owner of session did not add a location"
     }
 
-    var emailHost = await config.getConfig('EMAIL')
-    var emailPass = await config.getConfig('EMAIL_PASS')
+    const EMAIL_VERSION = 2;
+
+    var emailHost = await config.getConfig('EMAIL', EMAIL_VERSION)
+    var emailPass = await config.getConfig('EMAIL_PASS', EMAIL_VERSION)
 
     let transporter = nodemailer.createTransport({
         service: "Gmail",
         auth: {
-            user: emailHost, 
-            pass: emailPass, 
+            user: emailHost,
+            pass: emailPass,
         },
     });
 
@@ -281,7 +276,7 @@ const hostCancels = async(req, res) => {
             var emailBody = `<p>Hi ${guest_name},</p>
             <p>${host_name} has cancelled your reservation on ${timestamp} at ${location} for their session with you. If you have any questions about the session or cancellation, please reach them at: ${host_email}.</p>
             <p>-AtlasPlanner&nbsp;</p>`
-        
+
             transporter.sendMail({
                 from: `"Atlasplanner" <${emailHost}>`, // sender address
                 to: guest_email, // list of receivers
