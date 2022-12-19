@@ -3,52 +3,72 @@ const nodemailer = require("nodemailer");
 const config = require("../../config/Config");
 const { splitDashestoSpaces } = require("../../utils");
 
-
 const sendRescheduleConfirm = async (req, res) => {
-    const start = req.body.new_start
-    const end = req.body.new_end
+  const domain = req.body.domain;
+  const timeslots = req.body.timeslots;
 
-    const booking_name = req.body.booking_name;
-    const booking_email = req.body.booking_email;
+  const bookingName = req.body.booking_name;
+  const bookingEmail = req.body.booking_email;
 
-    const orgId = req.body.session._orgId;
-    const eventId = req.body.session._eventId;
-    const sessionId = req.body.session._id
-    const bookingId = req.body.booking_id
+  const orgId = req.body.session._orgId;
+  const eventId = req.body.session._eventId;
+  const sessionId = req.body.session._id;
+  const bookingId = req.body.booking_id;
 
-    const emailHost = await config.getConfig("EMAIL", 2);
-    const emailPass = await config.getConfig("EMAIL_PASS", 2);
+  const sessionName = req.body.session.name;
+  const sessionEmail = req.body.session.email;
 
-    const rescheduleLink = ``;
-    const cancelLink = ``;
+  const emailHost = await config.getConfig("EMAIL", 2);
+  const emailPass = await config.getConfig("EMAIL_PASS", 2);
 
-    const formattedEventName = splitDashestoSpaces(eventId);
-  
-    let transporter = nodemailer.createTransport({
-      service: "Gmail",
-      auth: {
-        user: emailHost,
-        pass: emailPass,
-      },
-    });
-  
-    transporter.sendMail({
-        from: `"Atlasplanner" <${emailHost}>`, // sender address
-        to: userEmail, // list of receivers
-        subject: `${formattedEventName}- Your profile has been created`, // Subject line
-        text: "", // plain text body
-        html: `<p>Hi ${booking_name},</p>
-        <p>Your have  ${formattedEventName}. You will be notified via email for all bookings or cancellations made by attendees.</p>
+  const rescheduleLink = `${domain}/edit-booking/${orgId}/${eventId}/${sessionId}?id=${bookingId}&type=edit`;
+  const cancelLink = `${domain}/edit-booking/${orgId}/${eventId}/${sessionId}?id=${bookingId}&type=cancel`;
+  const profileLink = `${domain}/profile/${orgId}/${eventId}/${sessionId}?type=bookings`;
+
+  const formattedEventName = splitDashestoSpaces(eventId);
+
+  let transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+      user: emailHost,
+      pass: emailPass,
+    },
+  });
+
+  transporter.sendMail({
+    from: `"Atlasplanner" <${emailHost}>`, // sender address
+    to: bookingEmail, // list of receivers
+    subject: `${formattedEventName}- You rescheduled your booking`, // Subject line
+    text: "", // plain text body
+    html: `<p>Hi ${bookingName},</p>
+        <p>You have rescheduled your booking for the event ${formattedEventName} to the new date: <strong>${timeslots}</strong>.</p> 
+        <p>The owner of this session will be notified of this change.</p>
         <div style="display: flex;">
-            <a href="${profileLink}">Edit profile</a>
-            <a style="margin-left: 10px;" href="${bookingsLink}">View bookings</a>
+            <a href="${rescheduleLink}">Reschedule</a>
+            <a style="margin-left: 10px;" href="${cancelLink}">Cancel booking</a>
         </div>
         <br />
         <strong>AtlasPlanner</strong>`, // html body
-      });
-    
-      res.status(200).send("Confirmation email has been sent!");
-}
+  });
+
+  if (!isEmpty(sessionEmail)) {
+    transporter.sendMail({
+      from: `"Atlasplanner" <${emailHost}>`, // sender address
+      to: sessionEmail, // list of receivers
+      subject: `${formattedEventName}- ${bookingName} rescheduled their booking`, // Subject line
+      text: "", // plain text body
+      html: `<p>Hi ${sessionName},</p>
+        <p>${bookingName} has rescheduled their booking with your for the event ${formattedEventName} to the new date: <strong>${timeslots}</strong>.</p> 
+        <div style="display: flex;">
+            <a href="${profileLink}">View all bookings</a>
+        </div>
+        <br />
+        <strong>AtlasPlanner</strong>`, // html body
+    });
+  }
+
+  res.status(200).send("Rescheduling email is sent!");
+};
 
 const sendSessConfirm = async (req, res) => {
   const userEmail = req.body.email;
@@ -139,7 +159,7 @@ const reserveSession = async (req, res) => {
         : "user did not leave a location";
 
       const emailBody = `<p>Hi ${sessionInfo.name},</p>
-            <p>${userBody.name} has scheduled time with you for the date: ${userBody.timeslots}.</p> 
+            <p>${userBody.name} has scheduled time with you for the date: <strong>${userBody.timeslots}</strong>.</p> 
             <p>You plan to meet at: ${location}. If you need to reach the user directly, you can reach them at: ${sendingEmail}.</p>
             <a href="${mentorProfileLink}">Edit & view booking</a>
             <br />
@@ -174,7 +194,7 @@ const reserveSession = async (req, res) => {
         : "user did not leave a location";
 
       const emailTemplate = `<p>Hi ${userBody.name},</p>
-            <p>You have scheduled time with ${sessionInfo.name} for the date: ${userBody.timeslots}.</p>
+            <p>You have scheduled time with ${sessionInfo.name} for the date: <strong>${userBody.timeslots}</strong>.</p>
             <p>You plan to meet them at: ${location}. If you need to reach the owner, you can reach them at: ${sendingEmail}.</p>
 
             <div style="display: flex;">
@@ -225,7 +245,7 @@ const deleteReservation = async (req, res) => {
   if (sending_email) {
     if (sending_email.length !== "") {
       var emailBody = `<p>Hi ${sending_name},</p>
-            <p>You have successfully cancelled your booking with ${receiving_name} for the date: ${timeslots}</p>
+            <p>You have successfully cancelled your booking with ${receiving_name} for the date: <strong>${timeslots}</strong></p>
             <p>They have been notified of this change. If you have any questions with the owner of the sessions, please reach them at: ${receiving_email}.</p>
             <br />
             <strong>AtlasPlanner</strong>`;
@@ -243,7 +263,7 @@ const deleteReservation = async (req, res) => {
   if (receiving_email) {
     if (receiving_email.length != "") {
       var emailBody = `<p>Hi ${receiving_name},</p>
-            <p>${sending_name} has cancelled their booking with you for the date: ${timeslots}.</p>
+            <p>${sending_name} has cancelled their booking with you for the date: <strong>${timeslots}</strong>.</p>
             <p>If you need to get in touch with them, you can reach them at: ${sending_email}.</p>
             <br />
             <strong>AtlasPlanner</strong>`;
@@ -289,7 +309,7 @@ const hostCancels = async (req, res) => {
   if (guest_email) {
     if (guest_email.length != 0) {
       var emailBody = `<p>Hi ${guest_name},</p>
-            <p>${host_name} has cancelled your booking on ${timeslots} at: ${location}.</p>
+            <p>${host_name} has cancelled your booking on <strong>${timeslots}</strong> at: ${location}.</p>
             <p>If you have any questions about the session or cancellation, please reach them at: ${host_email}.</p>
             <br />
             <strong>AtlasPlanner<strong>`;
